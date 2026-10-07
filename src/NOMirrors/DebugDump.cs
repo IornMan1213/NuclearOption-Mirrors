@@ -82,7 +82,7 @@ namespace NOMirrors
                 layersLogged = true;
                 for (int l = 0; l < 32; l++) if (LayerMask.LayerToName(l) != "") Plugin.Log.LogInfo($"[debug] layer {l} = {LayerMask.LayerToName(l)}");
                 foreach (var r in FindObjectsOfType<Renderer>())
-                    if (r.gameObject.layer == 14 || (r.gameObject.layer == 3 && r.GetType() != typeof(MeshRenderer)))
+                    if (r.gameObject.layer == 3)
                         Plugin.Log.LogInfo($"[debug] layer {r.gameObject.layer}: {r.GetType().Name} {r.name} under {(r.transform.parent != null ? r.transform.parent.name : "-")} mat {(r.sharedMaterial != null ? r.sharedMaterial.shader.name : "-")}");
             }
             foreach (var m in mirrors)

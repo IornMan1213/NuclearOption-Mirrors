@@ -9,6 +9,9 @@
 - New *Reflect the cockpit* setting: mirrors also show the cockpit interior that the game draws with its own camera.
 - New Probe mode: one shared reflection cube at the eye, looked up per pixel on the glass (cheap, soft). Convex fields bend the
   glass's normals. Camera mode stays the default.
+- Fixed mirrors flickering with patches of the wrong (flipped) picture when *Reflect the cockpit* was on: a mirror camera could
+  draw its own glass at its near plane. Mirror glass and the aircraft's see-through parts are now hidden from mirror cameras, and
+  mirrors render one per frame, by hand (cheaper too). Mirror cameras skip post-processing, AA and screen copies.
 - Developer aid: create `BepInEx/nomirrors_debug.flag` to log each mirror's frame and save what it shows as PNGs.
 
 ## 0.0.1

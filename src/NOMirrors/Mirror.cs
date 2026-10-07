@@ -85,6 +85,8 @@ namespace NOMirrors
                 cam = go.AddComponent<Camera>();
                 cam.targetTexture = rt;
                 cam.enabled = false;
+                mirrorCameras.Add(cam);
+                GlassHider.Hook();
                 // a plain render: no screen-colour / depth copies (the game's glass shaders read the global ones, and a mirror
                 // camera's copy then showed through the canopy as a ghost cockpit), no post-processing, no AA
                 if (DebugDump.StockCameras) goto made;   // debug A/B
@@ -115,14 +117,22 @@ namespace NOMirrors
             // only from the cockpit: in outside views the mirror cameras would keep each other "visible"
             bool render = Plugin.Enabled.Value && main != null && glass.isVisible && Time.unscaledTime >= nextRender &&
                           (main.transform.position - glass.bounds.center).sqrMagnitude < 9f;
-            if (!render) { cam.enabled = false; return; }
+            // One mirror per frame, rendered here by hand. Left enabled together, the mirror cameras sometimes got each other's
+            // pictures (the left mirror showing the right one's view, or a mix: user video, 0.0.2).
+            if (!render || lastRenderFrame == Time.frameCount) return;
+            if (!Place(main.transform.position)) return;
+            lastRenderFrame = Time.frameCount;
             if (Settings.UpdateRate > 0f) nextRender = Time.unscaledTime + 1f / Settings.UpdateRate;
-
-            if (!Place(main.transform.position)) { cam.enabled = false; return; }
             cam.cullingMask = (main.cullingMask | (Plugin.ShowCockpit.Value ? CockpitLayers(main) : 0)) & ~Plugin.ExcludedLayers;
-            cam.depth = main.depth - 1f;
-            cam.enabled = true;
+            cam.Render();
         }
+
+        static int lastRenderFrame = -1;
+
+        internal static readonly System.Collections.Generic.List<Mirror> All = new System.Collections.Generic.List<Mirror>();
+        internal Renderer Glass => glass;
+        void OnEnable() => All.Add(this);
+        void OnDisable() => All.Remove(this);
 
         /// <summary>
         /// Planar reflection: the camera sits at the eye mirrored through the glass's plane and looks back through the glass, with an
@@ -151,10 +161,11 @@ namespace NOMirrors
             float cx = Vector3.Dot(rel, right), cy = Vector3.Dot(rel, cu);
             float hw = Mathf.Abs(Vector3.Dot(ax, right)) + Mathf.Abs(Vector3.Dot(ay, right));
             float hh = Mathf.Abs(Vector3.Dot(ax, cu)) + Mathf.Abs(Vector3.Dot(ay, cu));
-            float near = Mathf.Max(d, 0.001f), far = Mathf.Max(Settings.Far, near + 1f);
+            float near = Mathf.Max(d + 0.002f, 0.001f), far = Mathf.Max(Settings.Far, near + 1f);   // just past the glass
             cam.nearClipPlane = near;                                        // clips everything behind the glass
             cam.farClipPlane = far;
-            cam.projectionMatrix = Matrix4x4.Frustum(cx - hw, cx + hw, cy - hh, cy + hh, near, far);
+            float k = near / d;                                              // the glass rectangle, scaled out to the near plane
+            cam.projectionMatrix = Matrix4x4.Frustum((cx - hw) * k, (cx + hw) * k, (cy - hh) * k, (cy + hh) * k, near, far);
 
             // the texture's x runs along the camera's right; the glass's u along its own x: flip where they disagree
             int f = (Vector3.Dot(right, ax) < 0f ? 1 : 0) | (Vector3.Dot(cu, ay) < 0f ? 2 : 0);
@@ -162,6 +173,9 @@ namespace NOMirrors
             if (f != flip) { flip = f; MirrorSystem.Orient(mat, (f & 1) != 0, (f & 2) != 0); }
             return true;
         }
+
+        static readonly System.Collections.Generic.HashSet<Camera> mirrorCameras = new System.Collections.Generic.HashSet<Camera>();
+        internal static bool IsMirrorCamera(Camera c) => mirrorCameras.Contains(c);
 
         static int cockpitLayers;
         static float nextLayerScan;
@@ -231,7 +245,7 @@ namespace NOMirrors
         {
             if (filter != null && originalMesh != null) filter.sharedMesh = originalMesh;
             bentFor = -1f;
-            if (cam != null) { Destroy(cam.gameObject); cam = null; }
+            if (cam != null) { mirrorCameras.Remove(cam); Destroy(cam.gameObject); cam = null; }
             if (rt != null) { rt.Release(); Destroy(rt); rt = null; }
             if (mat != null) { Destroy(mat); mat = null; }
             if (counted) { ActiveProbeMirrors--; counted = false; }

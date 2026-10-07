@@ -62,6 +62,70 @@ namespace NOMirrors
         }
     }
 
+    /// <summary>
+    /// See-through cockpit renderers of the player's aircraft (canopy glass) are hidden while a mirror camera draws. The game's glass shaders sample the
+    /// screen image, which inside a mirror camera is some other render: the mirrors flickered with rectangles of the wrong view
+    /// (user video, 0.0.2). The glass still shows normally on screen.
+    /// </summary>
+    internal static class GlassHider
+    {
+        static readonly List<Renderer> glass = new List<Renderer>();
+        static readonly List<Renderer> hidden = new List<Renderer>();
+        static float nextScan;
+        static bool hooked;
+
+        internal static void Hook()
+        {
+            if (hooked) return;
+            hooked = true;
+            UnityEngine.Rendering.RenderPipelineManager.beginCameraRendering += (ctx, cam) => { if (Mirror.IsMirrorCamera(cam)) Hide(); };
+            UnityEngine.Rendering.RenderPipelineManager.endCameraRendering += (ctx, cam) => Restore();
+        }
+
+        static void Hide()
+        {
+            Restore();
+            var main = Plugin.ViewCamera();
+            if (main == null) return;
+            if (Time.unscaledTime >= nextScan)
+            {
+                nextScan = Time.unscaledTime + 2f;
+                glass.Clear();
+                // the player's aircraft (its parts become separate roots in flight): its see-through, non-particle renderers
+                var hud = SceneSingleton<CombatHUD>.i;
+                var ac = hud != null ? hud.aircraft : null;
+                if (ac != null)
+                {
+                    var roots = new HashSet<Transform> { ac.transform };
+                    foreach (var part in Object.FindObjectsOfType<UnitPart>()) if (part.parentUnit == ac) roots.Add(part.transform);
+                    var seen = new HashSet<Renderer>();
+                    foreach (var root in roots)
+                        foreach (var r in root.GetComponentsInChildren<Renderer>(true))
+                        {
+                            if (!seen.Add(r) || !(r is MeshRenderer || r is SkinnedMeshRenderer) || r.GetComponent<Mirror>() != null) continue;
+                            foreach (var m in r.sharedMaterials)
+                                if (m != null && m.renderQueue > 2500) { glass.Add(r); break; }
+                        }
+                }
+            }
+            foreach (var r in glass)
+                if (r != null && !r.forceRenderingOff) { r.forceRenderingOff = true; hidden.Add(r); }
+            // and every mirror's own glass: with the cockpit layer in view, a mirror camera drew its own glass right at its near
+            // plane, the previous (flipped) picture in patches (the flicker in the user's videos, "Reflect the cockpit" on)
+            foreach (var m in Mirror.All)
+            {
+                var r = m.Glass;
+                if (r != null && !r.forceRenderingOff) { r.forceRenderingOff = true; hidden.Add(r); }
+            }
+        }
+
+        static void Restore()
+        {
+            foreach (var r in hidden) if (r != null) r.forceRenderingOff = false;
+            hidden.Clear();
+        }
+    }
+
     /// <summary>Every second: if the player's aircraft changed, attach its named mirrors.</summary>
     public class MirrorScanner : MonoBehaviour
     {
