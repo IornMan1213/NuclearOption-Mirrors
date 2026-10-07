@@ -13,8 +13,9 @@ Two modes (BepInEx config, General > Mode):
 - **Cameras** (default). A true planar reflection per mirror: a camera sits at the pilot's eye mirrored through the glass's
   plane and looks back through the glass, with an off-axis frustum whose near plane is exactly the glass. Every texel shows what
   real glass would reflect at that point, so the image maps straight onto the glass, moves with your head, and nothing in front
-  of the glass (the mirror's own housing, the airframe ahead) gets in. One render per mirror, capped at 30 per second by default
-  and skipped while the mirror is off screen or turned away.
+  of the glass (the mirror's own housing, the airframe ahead) gets in. Mirrors take turns: at most one mirror renders per frame,
+  each capped at *Updates per second* (30 by default), and none while off screen, turned away or seen from outside the cockpit.
+  Mirror cameras skip post-processing, anti-aliasing and screen copies, and don't see mirror glass or the aircraft's canopy glass.
 - **Probe**. One realtime reflection probe at the pilot's eye, shared by every mirror; the glass gets a fully metallic, fully
   smooth material and looks the reflection up per pixel. Cheapest, but soft (a small flat mirror covers only a few texels of the
   cube), and the cube is captured from the eye, not the glass. Probe mode needs the game's URP Lit shader; without it, mirrors
