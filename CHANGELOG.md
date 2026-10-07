@@ -12,6 +12,8 @@
 - Fixed mirrors flickering with patches of the wrong (flipped) picture when *Reflect the cockpit* was on: a mirror camera could
   draw its own glass at its near plane. Mirror glass and the aircraft's see-through parts are now hidden from mirror cameras, and
   mirrors render one per frame, by hand (cheaper too). Mirror cameras skip post-processing, AA and screen copies.
+- Fixed every mirror showing its picture reversed left-to-right: the flip was set as texture scale, which the glass's shader
+  ignores. It is now done on the glass's UVs.
 - Developer aid: create `BepInEx/nomirrors_debug.flag` to log each mirror's frame and save what it shows as PNGs.
 
 ## 0.0.1

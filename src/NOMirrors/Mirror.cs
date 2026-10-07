@@ -170,8 +170,43 @@ namespace NOMirrors
             // the texture's x runs along the camera's right; the glass's u along its own x: flip where they disagree
             int f = (Vector3.Dot(right, ax) < 0f ? 1 : 0) | (Vector3.Dot(cu, ay) < 0f ? 2 : 0);
             if (!Settings.FlipX) f ^= 1;
-            if (f != flip) { flip = f; MirrorSystem.Orient(mat, (f & 1) != 0, (f & 2) != 0); }
+            if (f != flip) { flip = f; FlipUVs((f & 1) != 0, (f & 2) != 0); }
             return true;
+        }
+
+        Mesh flipped;
+
+        /// <summary>
+        /// Flips the glass's UVs (a copy of its mesh, or a quad over its bounds when the mesh is not readable, as in asset bundles).
+        /// Done on the mesh, not with texture scale/offset: the shader the game has for the glass (Sprites/Default) ignores those,
+        /// and every mirror showed its picture reversed (user video, 0.0.2).
+        /// </summary>
+        void FlipUVs(bool fx, bool fy)
+        {
+            if (filter == null || originalMesh == null) return;
+            if (flipped != null) { Destroy(flipped); flipped = null; }
+            if (!fx && !fy) { filter.sharedMesh = originalMesh; return; }
+            Vector2 F(Vector2 uv) => new Vector2(fx ? 1f - uv.x : uv.x, fy ? 1f - uv.y : uv.y);
+            if (originalMesh.isReadable)
+            {
+                flipped = Instantiate(originalMesh);
+                var uvs = originalMesh.uv;
+                for (int i = 0; i < uvs.Length; i++) uvs[i] = F(uvs[i]);
+                flipped.uv = uvs;
+            }
+            else
+            {
+                Vector3 c = local.center, e = local.extents;
+                flipped = new Mesh
+                {
+                    vertices = new[] { c + new Vector3(-e.x, -e.y, 0f), c + new Vector3(-e.x, e.y, 0f), c + new Vector3(e.x, e.y, 0f), c + new Vector3(e.x, -e.y, 0f) },
+                    uv = new[] { F(new Vector2(0, 0)), F(new Vector2(0, 1)), F(new Vector2(1, 1)), F(new Vector2(1, 0)) },
+                    triangles = new[] { 0, 1, 2, 0, 2, 3, 0, 2, 1, 0, 3, 2 },   // both faces
+                };
+                flipped.RecalculateNormals();
+            }
+            flipped.name = originalMesh.name + "_mirrored";
+            filter.sharedMesh = flipped;
         }
 
         static readonly System.Collections.Generic.HashSet<Camera> mirrorCameras = new System.Collections.Generic.HashSet<Camera>();
@@ -255,6 +290,7 @@ namespace NOMirrors
         {
             Teardown();
             if (bent != null) Destroy(bent);
+            if (flipped != null) Destroy(flipped);
             if (glass != null && original != null) glass.sharedMaterial = original;
         }
     }
