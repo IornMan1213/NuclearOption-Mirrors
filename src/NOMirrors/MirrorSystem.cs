@@ -41,13 +41,24 @@ namespace NOMirrors
             Shader sh = null;
             foreach (var name in Shaders) if ((sh = Shader.Find(name)) != null) break;
             var m = new Material(sh) { name = "NOMirror" };
-            var scale = new Vector2(s.FlipX ? -1f : 1f, 1f); var offset = new Vector2(s.FlipX ? 1f : 0f, 0f);
-            foreach (var prop in new[] { "_BaseMap", "_MainTex" })
-                if (m.HasProperty(prop)) { m.SetTexture(prop, rt); m.SetTextureScale(prop, scale); m.SetTextureOffset(prop, offset); }
+            foreach (var prop in TexProps)
+                if (m.HasProperty(prop)) m.SetTexture(prop, rt);
             var tint = new Color(s.Brightness, s.Brightness, s.Brightness, 1f);
             foreach (var prop in new[] { "_BaseColor", "_Color" })
                 if (m.HasProperty(prop)) m.SetColor(prop, tint);
             return m;
+        }
+
+        static readonly string[] TexProps = { "_BaseMap", "_MainTex" };
+
+        /// <summary>Mirrors the texture on the glass across x and/or y.</summary>
+        internal static void Orient(Material m, bool flipX, bool flipY)
+        {
+            if (m == null) return;
+            var scale = new Vector2(flipX ? -1f : 1f, flipY ? -1f : 1f);
+            var offset = new Vector2(flipX ? 1f : 0f, flipY ? 1f : 0f);
+            foreach (var prop in TexProps)
+                if (m.HasProperty(prop)) { m.SetTextureScale(prop, scale); m.SetTextureOffset(prop, offset); }
         }
     }
 

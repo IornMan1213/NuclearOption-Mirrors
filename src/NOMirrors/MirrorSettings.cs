@@ -11,12 +11,12 @@ namespace NOMirrors
         public int Resolution = 256;
         /// <summary>Reflection updates per second (0 = every frame).</summary>
         public float UpdateRate = 30f;
-        /// <summary>Multiplies the field of view the mirror's size gives from the pilot's eye (more than 1 = wider, convex look).</summary>
+        /// <summary>Field of view: 1 = a flat mirror; above 1 = convex (a wider view). Multiplies the player's General > Field of view.</summary>
         public float FovScale = 1f;
-        /// <summary>Near and far clip of the reflection camera, metres.</summary>
+        /// <summary>Far clip of the reflection camera, metres (the near clip is the glass itself; Near is kept for compatibility).</summary>
         public float Near = 0.05f, Far = 3000f;
-        /// <summary>Flip the image left-right on the glass. A mirror shows the world reversed; flip this off if the glass's UVs
-        /// already run right-to-left as seen from the front.</summary>
+        /// <summary>The image's orientation on the glass is worked out from the glass's local axes; set false (token <c>noflip</c>)
+        /// only if the glass's UVs run opposite to its local X.</summary>
         public bool FlipX = true;
         /// <summary>Brightness of the reflection (mirrors lose a little light).</summary>
         public float Brightness = 0.9f;
