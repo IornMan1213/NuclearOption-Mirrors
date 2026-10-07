@@ -65,6 +65,7 @@ namespace NOMirrors
                 if (k == "fov" && float.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var fv)) Plugin.FieldOfView.Value = fv;
                 else if (k == "mode" && System.Enum.TryParse<MirrorMode>(v, true, out var mv)) Plugin.Mode.Value = mv;
                 else if (k == "cockpit" && bool.TryParse(v, out var bv)) Plugin.ShowCockpit.Value = bv;
+                else if (k == "enabled" && bool.TryParse(v, out var ev)) Plugin.Enabled.Value = ev;
                 else if (k == "timescale" && float.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var tv)) Time.timeScale = tv;
                 else if (k == "stock" && bool.TryParse(v, out var sv)) StockCameras = sv;
                 else if (k == "look" && float.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var yv)) look = yv;
