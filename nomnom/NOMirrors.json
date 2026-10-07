@@ -1,0 +1,34 @@
+{
+    "id":  "NOMirrors",
+    "displayName":  "NO Mirrors",
+    "description":  "Working cockpit mirrors for Nuclear Option. A BepInEx plugin that makes mirror glass reflect: each mirror renders the view behind the pilot, only while on screen and at a capped rate. Aircraft modders add mirrors without code by naming the glass object NOMirror (settings can go in the name), and other plugins can use its small API. Used by the MiG-29 Fulcrum mod.",
+    "tags":  [
+                 "mod",
+                 "QoL",
+                 "library"
+             ],
+    "isClientOrServer":  "Client",
+    "urls":  [
+                 {
+                     "name":  "info",
+                     "url":  "https://github.com/IornMan1213/NuclearOption-Mirrors/blob/main/README.md"
+                 }
+             ],
+    "authors":  [
+                    "IornMan1213"
+                ],
+    "githubOwner":  "IornMan1213",
+    "githubRepoName":  "NuclearOption-Mirrors",
+    "autoUpdateArtifacts":  "True",
+    "artifacts":  [
+                      {
+                          "fileName":  "NOMirrors.dll",
+                          "version":  "0.0.1",
+                          "category":  "release",
+                          "type":  "plugin",
+                          "gameVersion":  "0.34.2",
+                          "downloadUrl":  "https://github.com/IornMan1213/NuclearOption-Mirrors/releases/download/v0.0.1/NOMirrors.dll",
+                          "hash":  "sha256:626645001525a51f2ae93e44af573e4960eb400726c468cc9a5b508eb972a96c"
+                      }
+                  ]
+}

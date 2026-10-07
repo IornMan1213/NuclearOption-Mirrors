@@ -3,7 +3,7 @@
 A small BepInEx plugin that makes cockpit mirrors actually reflect. It is meant to be shared: any aircraft mod can add mirrors
 without writing code, and other plugins can use it through a tiny API.
 
-**Status: early (0.1.0).** The framework is in place; first in-game tuning is under way with the
+**Status: early (0.0.1).** The framework is in place; first in-game tuning is under way with the
 [MiG-29 Fulcrum mod](https://github.com/IornMan1213/MiG29-NuclearOption).
 
 ## How it works

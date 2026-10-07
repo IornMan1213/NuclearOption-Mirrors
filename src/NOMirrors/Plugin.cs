@@ -10,7 +10,7 @@ namespace NOMirrors
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "iornman.nomirrors";
-        public const string Version = "0.1.0";
+        public const string Version = "0.0.1";
 
         internal static ManualLogSource Log;
         internal static ConfigEntry<bool> Enabled;
