@@ -14,9 +14,39 @@ namespace NOMirrors
         static string Flag => Path.Combine(Paths.BepInExRootPath, "nomirrors_debug.flag");
         static string Dir => Path.Combine(Paths.BepInExRootPath, "nomirrors_debug");
         float next;
+        bool layersLogged;
 
+        internal static bool StockCameras;   // debug A/B: mirror cameras without the plain-render settings (applies on the next mode change)
+        static float look;
+        static int turnedFrame = -1;
+        static Quaternion gameRotation;
+
+        void OnEnable() => UnityEngine.Rendering.RenderPipelineManager.beginContextRendering += Turn;
+        void OnDisable() => UnityEngine.Rendering.RenderPipelineManager.beginContextRendering -= Turn;
+
+        // turn for this frame's renders only; LateUpdate of the next frame starts from the game's own rotation again
+        static void Turn(UnityEngine.Rendering.ScriptableRenderContext ctx, System.Collections.Generic.List<Camera> cams)
+        {
+            if (look == 0f || turnedFrame == Time.frameCount) return;
+            var main = Plugin.ViewCamera();
+            if (main == null) return;
+            turnedFrame = Time.frameCount;
+            gameRotation = main.transform.localRotation;
+            main.transform.rotation = Quaternion.AngleAxis(look, main.transform.parent != null ? main.transform.parent.up : Vector3.up) * main.transform.rotation;
+            instance.StartCoroutine(Restore(main.transform));
+        }
+
+        static System.Collections.IEnumerator Restore(Transform t)
+        {
+            yield return new WaitForEndOfFrame();
+            if (t != null) t.localRotation = gameRotation;
+        }
+
+        static DebugDump instance;
+        void Awake() => instance = this;
         void Update()
         {
+            
             if (Time.unscaledTime < next) return;
             next = Time.unscaledTime + 3f;
             if (!File.Exists(Flag)) return;
@@ -35,6 +65,9 @@ namespace NOMirrors
                 if (k == "fov" && float.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var fv)) Plugin.FieldOfView.Value = fv;
                 else if (k == "mode" && System.Enum.TryParse<MirrorMode>(v, true, out var mv)) Plugin.Mode.Value = mv;
                 else if (k == "cockpit" && bool.TryParse(v, out var bv)) Plugin.ShowCockpit.Value = bv;
+                else if (k == "timescale" && float.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var tv)) Time.timeScale = tv;
+                else if (k == "stock" && bool.TryParse(v, out var sv)) StockCameras = sv;
+                else if (k == "look" && float.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var yv)) look = yv;
             }
             var mirrors = FindObjectsOfType<Mirror>();
             if (mirrors.Length == 0) return;
@@ -44,6 +77,14 @@ namespace NOMirrors
             Plugin.Log.LogInfo($"[debug] view camera {(main != null ? main.name : "none")} at {eye:F3} fwd {(main != null ? main.transform.forward : Vector3.zero):F3} mask {(main != null ? main.cullingMask : 0):X}");
             foreach (var c in Camera.allCameras)
                 Plugin.Log.LogInfo($"[debug] camera {c.name} depth {c.depth} mask {c.cullingMask:X} rt {(c.targetTexture != null)} at {c.transform.position:F3} near {c.nearClipPlane:F3}");
+            if (!layersLogged)
+            {
+                layersLogged = true;
+                for (int l = 0; l < 32; l++) if (LayerMask.LayerToName(l) != "") Plugin.Log.LogInfo($"[debug] layer {l} = {LayerMask.LayerToName(l)}");
+                foreach (var r in FindObjectsOfType<Renderer>())
+                    if (r.gameObject.layer == 14 || (r.gameObject.layer == 3 && r.GetType() != typeof(MeshRenderer)))
+                        Plugin.Log.LogInfo($"[debug] layer {r.gameObject.layer}: {r.GetType().Name} {r.name} under {(r.transform.parent != null ? r.transform.parent.name : "-")} mat {(r.sharedMaterial != null ? r.sharedMaterial.shader.name : "-")}");
+            }
             foreach (var m in mirrors)
             {
                 var t = m.transform;

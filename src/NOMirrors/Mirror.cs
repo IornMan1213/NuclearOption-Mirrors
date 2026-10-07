@@ -85,6 +85,15 @@ namespace NOMirrors
                 cam = go.AddComponent<Camera>();
                 cam.targetTexture = rt;
                 cam.enabled = false;
+                // a plain render: no screen-colour / depth copies (the game's glass shaders read the global ones, and a mirror
+                // camera's copy then showed through the canopy as a ghost cockpit), no post-processing, no AA
+                if (DebugDump.StockCameras) goto made;   // debug A/B
+                var data = go.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+                data.requiresColorOption = UnityEngine.Rendering.Universal.CameraOverrideOption.Off;
+                data.requiresDepthOption = UnityEngine.Rendering.Universal.CameraOverrideOption.Off;
+                data.renderPostProcessing = false;
+                data.antialiasing = UnityEngine.Rendering.Universal.AntialiasingMode.None;
+                made:
                 cam.nearClipPlane = Settings.Near;
                 cam.farClipPlane = Settings.Far;
                 mat = MirrorSystem.MakeMaterial(rt, Settings);
