@@ -103,7 +103,9 @@ namespace NOMirrors
             }
 
             var main = Plugin.ViewCamera();
-            bool render = Plugin.Enabled.Value && main != null && glass.isVisible && Time.unscaledTime >= nextRender;
+            // only from the cockpit: in outside views the mirror cameras would keep each other "visible"
+            bool render = Plugin.Enabled.Value && main != null && glass.isVisible && Time.unscaledTime >= nextRender &&
+                          (main.transform.position - glass.bounds.center).sqrMagnitude < 9f;
             if (!render) { cam.enabled = false; return; }
             if (Settings.UpdateRate > 0f) nextRender = Time.unscaledTime + 1f / Settings.UpdateRate;
 
