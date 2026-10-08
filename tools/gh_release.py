@@ -35,6 +35,10 @@ def main():
     data = open(DLL, "rb").read()
     a = api("POST", rel["upload_url"].split("{")[0] + "?name=NOMirrors.dll", tok, data, "application/octet-stream")
     print("asset:", a["browser_download_url"], a["size"], "sha256:" + hashlib.sha256(data).hexdigest())
+    xml = os.path.splitext(DLL)[0] + ".xml"   # API documentation for modders' IntelliSense (put it next to the DLL they reference)
+    if os.path.exists(xml):
+        a = api("POST", rel["upload_url"].split("{")[0] + "?name=NOMirrors.xml", tok, open(xml, "rb").read(), "application/xml")
+        print("asset:", a["browser_download_url"], a["size"])
 
 
 if __name__ == "__main__":
