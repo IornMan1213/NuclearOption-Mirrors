@@ -19,7 +19,27 @@ namespace NOMirrors
     [DisallowMultipleComponent]
     public class Mirror : MonoBehaviour
     {
+        /// <summary>This mirror's settings. After changing them on a live mirror, call <see cref="Refresh"/>.</summary>
         public MirrorSettings Settings;
+
+        /// <summary>The renderer whose glass reflects.</summary>
+        public Renderer Glass => glass;
+        /// <summary>Camera mode: the texture the glass shows (null in probe mode or before the mirror has started).</summary>
+        public RenderTexture Texture => rt;
+        /// <summary>How this mirror currently reflects (probe mode falls back to cameras without the URP Lit shader).</summary>
+        public MirrorMode Mode => mode;
+        /// <summary>Time.unscaledTime of this mirror's last render (camera mode), or -1 if it has not rendered yet.</summary>
+        public float LastRenderTime { get; private set; } = -1f;
+        /// <summary>True once the mirror has set its glass up (from its first frame).</summary>
+        public bool Ready => started;
+
+        /// <summary>Re-applies <see cref="Settings"/> (resolution, field of view and the rest) and the player's current mode.</summary>
+        public void Refresh() { if (started) Apply(); }
+        /// <summary>Camera mode: render at the next chance instead of waiting for the update rate.</summary>
+        public void RenderNow() => nextRender = 0f;
+
+        internal bool SettingsFromName;   // attached by name: picks up the player's config changes
+        bool started;
 
         internal static int ActiveProbeMirrors;
 
@@ -54,7 +74,12 @@ namespace NOMirrors
             var ls = transform.lossyScale;
             size = new Vector2(Mathf.Abs(local.size.x * ls.x), Mathf.Abs(local.size.y * ls.y));
             if (size.x < 1e-4f || size.y < 1e-4f) { size = new Vector2(0.1f, 0.05f); local = new Bounds(local.center, new Vector3(0.1f, 0.05f, 0f)); }
+            if (mf != null && originalMesh != null && !originalMesh.isReadable && originalMesh.vertexCount != 4)
+                Plugin.Log.LogInfo($"{name}: the glass mesh is not readable, so it is drawn as a rectangle over its bounds " +
+                                   "(enable Read/Write on the mesh to keep its own shape)");
+            started = true;
             Apply();
+            MirrorSystem.RaiseAdded(this);
         }
 
         /// <summary>Sets the glass up for the current mode (called again when the player changes the mode).</summary>
@@ -116,21 +141,22 @@ namespace NOMirrors
             var main = Plugin.ViewCamera();
             // only from the cockpit: in outside views the mirror cameras would keep each other "visible"
             bool render = Plugin.Enabled.Value && main != null && glass.isVisible && Time.unscaledTime >= nextRender &&
-                          (main.transform.position - glass.bounds.center).sqrMagnitude < 9f;
+                          (main.transform.position - glass.bounds.center).sqrMagnitude < Settings.Range * Settings.Range;
             // One mirror per frame, rendered here by hand. Left enabled together, the mirror cameras sometimes got each other's
             // pictures (the left mirror showing the right one's view, or a mix: user video, 0.0.2).
             if (!render || lastRenderFrame == Time.frameCount) return;
             if (!Place(main.transform.position)) return;
             lastRenderFrame = Time.frameCount;
             if (Settings.UpdateRate > 0f) nextRender = Time.unscaledTime + 1f / Settings.UpdateRate;
-            cam.cullingMask = (main.cullingMask | (Plugin.ShowCockpit.Value ? CockpitLayers(main) : 0)) & ~Plugin.ExcludedLayers;
+            bool cockpit = Settings.ReflectCockpit ?? Plugin.ShowCockpit.Value;
+            cam.cullingMask = (main.cullingMask | (cockpit ? CockpitLayers(main) : 0)) & ~Plugin.ExcludedLayers;
             cam.Render();
+            LastRenderTime = Time.unscaledTime;
         }
 
         static int lastRenderFrame = -1;
 
         internal static readonly System.Collections.Generic.List<Mirror> All = new System.Collections.Generic.List<Mirror>();
-        internal Renderer Glass => glass;
         void OnEnable() => All.Add(this);
         void OnDisable() => All.Remove(this);
 
@@ -228,9 +254,7 @@ namespace NOMirrors
             return cockpitLayers = mask;
         }
 
-        internal RenderTexture Texture => rt;
         internal Camera ReflectionCamera => cam;
-        internal MirrorMode ActiveMode => mode;
 
         /// <summary>
         /// Probe mode: a flat glass reflects nearly one direction, a few texels of the probe's cube. Wider fields of view bend the
@@ -288,6 +312,7 @@ namespace NOMirrors
 
         void OnDestroy()
         {
+            if (started) MirrorSystem.RaiseRemoved(this);
             Teardown();
             if (bent != null) Destroy(bent);
             if (flipped != null) Destroy(flipped);

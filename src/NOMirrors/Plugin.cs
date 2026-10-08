@@ -1,4 +1,4 @@
-using BepInEx;
+﻿using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using UnityEngine;
@@ -10,7 +10,7 @@ namespace NOMirrors
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "iornman.nomirrors";
-        public const string Version = "0.0.2";
+        public const string Version = "0.0.3";
 
         internal static ManualLogSource Log;
         internal static ConfigEntry<bool> Enabled;
@@ -54,7 +54,8 @@ namespace NOMirrors
             var far = Config.Bind("Quality", "View distance", 3000f, "How far the mirrors see, metres");
             void Apply() { Defaults.Resolution = res.Value; Defaults.UpdateRate = fps.Value; Defaults.Far = far.Value; }
             Apply();
-            res.SettingChanged += (_, __) => Apply(); fps.SettingChanged += (_, __) => Apply(); far.SettingChanged += (_, __) => Apply();
+            void Changed(object _, System.EventArgs __) { Apply(); MirrorSystem.RefreshAll(); }   // live mirrors pick the new defaults up
+            res.SettingChanged += Changed; fps.SettingChanged += Changed; far.SettingChanged += Changed;
 
             var go = new GameObject("NOMirrorsScanner");
             DontDestroyOnLoad(go);

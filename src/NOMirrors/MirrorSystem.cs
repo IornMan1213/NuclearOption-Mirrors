@@ -1,3 +1,4 @@
+﻿using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -10,28 +11,60 @@ namespace NOMirrors
     /// </summary>
     public static class MirrorSystem
     {
-        /// <summary>Makes <paramref name="glass"/> a mirror (or updates its settings). Returns the component.</summary>
+        /// <summary>Bumped when the public API changes in a way that matters to callers. 1: NO Mirrors 0.0.3.</summary>
+        public const int ApiVersion = 1;
+
+        /// <summary>The NO Mirrors version, e.g. "0.0.3".</summary>
+        public static string Version => Plugin.Version;
+
+        /// <summary>Every live mirror (read only).</summary>
+        public static IReadOnlyList<Mirror> Mirrors => Mirror.All;
+
+        /// <summary>Raised when a mirror has set its glass up (its first frame). Use it to adjust mirrors made by name.</summary>
+        public static event System.Action<Mirror> MirrorAdded;
+        /// <summary>Raised when a mirror is removed (detached, or its object destroyed).</summary>
+        public static event System.Action<Mirror> MirrorRemoved;
+
+        internal static void RaiseAdded(Mirror m) { try { MirrorAdded?.Invoke(m); } catch (System.Exception e) { Plugin.Log.LogError(e); } }
+        internal static void RaiseRemoved(Mirror m) { try { MirrorRemoved?.Invoke(m); } catch (System.Exception e) { Plugin.Log.LogError(e); } }
+
+        /// <summary>Makes <paramref name="glass"/> a mirror, or updates an existing mirror's settings (applied straight away).
+        /// Without <paramref name="settings"/>, they are read from the object's name over the player's defaults. Returns the component.</summary>
         public static Mirror Attach(Renderer glass, MirrorSettings settings = null)
         {
+            if (glass == null) throw new System.ArgumentNullException(nameof(glass));
             var m = glass.GetComponent<Mirror>() ?? glass.gameObject.AddComponent<Mirror>();
+            m.SettingsFromName = settings == null;
             m.Settings = settings ?? MirrorSettings.Parse(glass.name, Plugin.Defaults);
+            m.Refresh();
             return m;
         }
 
-        /// <summary>Stops <paramref name="glass"/> reflecting (its original material is not restored).</summary>
+        /// <summary>Stops <paramref name="glass"/> reflecting and gives it back its own material.</summary>
         public static void Detach(Renderer glass)
         {
-            var m = glass.GetComponent<Mirror>();
+            var m = glass != null ? glass.GetComponent<Mirror>() : null;
             if (m != null) Object.Destroy(m);
         }
 
-        /// <summary>Attaches every renderer under <paramref name="root"/> whose object name starts with the configured prefix.</summary>
+        /// <summary>Attaches every renderer under <paramref name="root"/> (inactive ones too) whose object name starts with the
+        /// configured prefix (<c>NOMirror</c>) and is not a mirror yet. Returns how many were attached.</summary>
         public static int AttachAll(Transform root)
         {
             int n = 0;
             foreach (var r in root.GetComponentsInChildren<Renderer>(true))
                 if (r.name.StartsWith(Plugin.Prefix.Value) && r.GetComponent<Mirror>() == null) { Attach(r); n++; }
             return n;
+        }
+
+        /// <summary>Re-reads the settings of mirrors attached by name (after the player changed the defaults) and re-applies all mirrors.</summary>
+        public static void RefreshAll()
+        {
+            foreach (var m in Mirror.All.ToArray())
+            {
+                if (m.SettingsFromName) m.Settings = MirrorSettings.Parse(m.name, Plugin.Defaults);
+                m.Refresh();
+            }
         }
 
         static readonly string[] Shaders = { "Universal Render Pipeline/Unlit", "Unlit/Texture", "Sprites/Default" };
@@ -50,16 +83,6 @@ namespace NOMirrors
         }
 
         static readonly string[] TexProps = { "_BaseMap", "_MainTex" };
-
-        /// <summary>Mirrors the texture on the glass across x and/or y.</summary>
-        internal static void Orient(Material m, bool flipX, bool flipY)
-        {
-            if (m == null) return;
-            var scale = new Vector2(flipX ? -1f : 1f, flipY ? -1f : 1f);
-            var offset = new Vector2(flipX ? 1f : 0f, flipY ? 1f : 0f);
-            foreach (var prop in TexProps)
-                if (m.HasProperty(prop)) { m.SetTextureScale(prop, scale); m.SetTextureOffset(prop, offset); }
-        }
     }
 
     /// <summary>

@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using BepInEx;
 using UnityEngine;
 
@@ -94,7 +94,7 @@ namespace NOMirrors
                 if (Vector3.Dot(n, eye - c) < 0f) n = -n;
                 var refl = Vector3.Reflect((c - eye).normalized, n);
                 var root = t.root;
-                Plugin.Log.LogInfo($"[debug] {m.name} {m.ActiveMode}: centre {c:F3} normal {n:F3} reflects {refl:F3} " +
+                Plugin.Log.LogInfo($"[debug] {m.name} {m.Mode}: centre {c:F3} normal {n:F3} reflects {refl:F3} " +
                                    $"(aircraft frame {root.InverseTransformDirection(refl):F3}) visible {r.isVisible} layer {m.gameObject.layer}");
                 var cam = m.ReflectionCamera;
                 if (cam != null)
