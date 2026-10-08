@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.0.3 (unreleased)
+## 0.0.3
 **A better framework for other modders.**
 - API: `MirrorSystem.Mirrors` (every live mirror), `MirrorAdded` / `MirrorRemoved` events, `ApiVersion` and `Version`;
   `Mirror.Refresh()` re-applies changed settings, `Mirror.RenderNow()`, and read-only `Glass`, `Texture`, `Mode`,
@@ -11,6 +11,7 @@
 - A note in the log when a non-rectangular glass mesh is not readable (it is drawn as a rectangle).
 - README rewritten as a guide for aircraft modders: modelling and aiming the glass, naming, Unity notes, testing, a
   troubleshooting table, the API, and an example plugin (`examples/MirrorExample`, optional dependency done right).
+- Game-free tests for the name tokens (`tests/SettingsTests`). Releases include `NOMirrors.xml`, the API documentation.
 
 ## 0.0.2
 **Mirrors now reflect correctly**, tested in game with the MiG-29 Fulcrum's three canopy mirrors.
