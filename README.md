@@ -177,7 +177,8 @@ dotnet build src/NOMirrors -c Release
 ```
 
 It builds against your installed game; pass `-p:GameDir="D:\Games\Nuclear Option"` if it is not in the default Steam folder.
-No game files are in this repository. `NOMirrors.xml` (the API's documentation, for IntelliSense) is built next to the DLL.
+No game files are in this repository. `dotnet run -c Release --project tests/SettingsTests` checks the name tokens without
+the game. `NOMirrors.xml` (the API's documentation, for IntelliSense) is built next to the DLL.
 
 ## Roadmap
 
