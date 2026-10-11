@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+- **Less lag**: mirror cameras no longer re-draw the sun's shadow cascades. With shadows on, each mirror render redrew the
+  whole scene's shadow maps on top of the main view's, most of a mirror's cost; the small mirror picture barely shows them.
+
 ## 0.0.3
 **A better framework for other modders.**
 - API: `MirrorSystem.Mirrors` (every live mirror), `MirrorAdded` / `MirrorRemoved` events, `ApiVersion` and `Version`;

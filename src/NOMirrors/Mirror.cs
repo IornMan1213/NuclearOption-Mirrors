@@ -119,6 +119,9 @@ namespace NOMirrors
                 data.requiresColorOption = UnityEngine.Rendering.Universal.CameraOverrideOption.Off;
                 data.requiresDepthOption = UnityEngine.Rendering.Universal.CameraOverrideOption.Off;
                 data.renderPostProcessing = false;
+                // no shadow pass: with shadows on, every mirror render re-drew the sun's shadow cascades for the whole scene on top
+                // of the main view's (most of a mirror's cost; lag reports, 0.0.3). The small, distant mirror picture barely shows them.
+                data.renderShadows = false;
                 data.antialiasing = UnityEngine.Rendering.Universal.AntialiasingMode.None;
                 made:
                 cam.nearClipPlane = Settings.Near;
