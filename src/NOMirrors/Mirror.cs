@@ -110,6 +110,7 @@ namespace NOMirrors
                 cam = go.AddComponent<Camera>();
                 cam.targetTexture = rt;
                 cam.enabled = false;
+                cam.allowHDR = false; cam.allowMSAA = false;   // a small LDR picture: no HDR buffer, no MSAA resolve
                 mirrorCameras.Add(cam);
                 GlassHider.Hook();
                 // a plain render: no screen-colour / depth copies (the game's glass shaders read the global ones, and a mirror
@@ -143,21 +144,33 @@ namespace NOMirrors
 
             var main = Plugin.ViewCamera();
             // only from the cockpit: in outside views the mirror cameras would keep each other "visible"
-            bool render = Plugin.Enabled.Value && main != null && glass.isVisible && Time.unscaledTime >= nextRender &&
+            bool render = Plugin.Enabled.Value && main != null && Time.unscaledTime >= nextRender && Time.unscaledTime >= budgetNext &&
                           (main.transform.position - glass.bounds.center).sqrMagnitude < Settings.Range * Settings.Range;
             // One mirror per frame, rendered here by hand. Left enabled together, the mirror cameras sometimes got each other's
             // pictures (the left mirror showing the right one's view, or a mix: user video, 0.0.2).
             if (!render || lastRenderFrame == Time.frameCount) return;
+            // only while the glass is in the player's view: Renderer.isVisible also counts shadow passes and other cameras, so mirrors
+            // behind the pilot's head kept rendering
+            if (planesFrame != Time.frameCount) { GeometryUtility.CalculateFrustumPlanes(main, planes); planesFrame = Time.frameCount; }
+            if (!GeometryUtility.TestPlanesAABB(planes, glass.bounds)) return;
             if (!Place(main.transform.position)) return;
             lastRenderFrame = Time.frameCount;
             if (Settings.UpdateRate > 0f) nextRender = Time.unscaledTime + 1f / Settings.UpdateRate;
+            float cap = Plugin.MaxRendersPerSecond.Value;
+            budgetNext = cap > 0f ? Time.unscaledTime + 1f / cap : 0f;
             bool cockpit = Settings.ReflectCockpit ?? Plugin.ShowCockpit.Value;
             cam.cullingMask = (main.cullingMask | (cockpit ? CockpitLayers(main) : 0)) & ~Plugin.ExcludedLayers;
-            cam.Render();
+            // coarser models in the small mirror picture (the LOD bias is global: set for this render only)
+            float lodBias = QualitySettings.lodBias;
+            QualitySettings.lodBias = lodBias * Plugin.DetailScale.Value;
+            try { cam.Render(); }
+            finally { QualitySettings.lodBias = lodBias; }
             LastRenderTime = Time.unscaledTime;
         }
 
-        static int lastRenderFrame = -1;
+        static int lastRenderFrame = -1, planesFrame = -1;
+        static float budgetNext;
+        static readonly Plane[] planes = new Plane[6];
 
         internal static readonly System.Collections.Generic.List<Mirror> All = new System.Collections.Generic.List<Mirror>();
         void OnEnable() => All.Add(this);

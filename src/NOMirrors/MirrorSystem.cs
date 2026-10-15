@@ -95,6 +95,7 @@ namespace NOMirrors
         static readonly List<Renderer> glass = new List<Renderer>();
         static readonly List<Renderer> hidden = new List<Renderer>();
         static float nextScan;
+        static Aircraft scannedFor;
         static bool hooked;
 
         internal static void Hook()
@@ -110,13 +111,15 @@ namespace NOMirrors
             Restore();
             var main = Plugin.ViewCamera();
             if (main == null) return;
-            if (Time.unscaledTime >= nextScan)
+            var hud = SceneSingleton<CombatHUD>.i;
+            var ac = hud != null ? hud.aircraft : null;
+            // rescan when the player's aircraft changes, else every 10 s (parts break off): the search walks every UnitPart in the
+            // scene, and every 2 s it showed up as a hitch with many aircraft around (performance report, 0.0.3)
+            if (ac != scannedFor || Time.unscaledTime >= nextScan)
             {
-                nextScan = Time.unscaledTime + 2f;
+                nextScan = Time.unscaledTime + 10f; scannedFor = ac;
                 glass.Clear();
                 // the player's aircraft (its parts become separate roots in flight): its see-through, non-particle renderers
-                var hud = SceneSingleton<CombatHUD>.i;
-                var ac = hud != null ? hud.aircraft : null;
                 if (ac != null)
                 {
                     var roots = new HashSet<Transform> { ac.transform };

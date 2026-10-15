@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.0.4 (not released yet)
+**Much less lag.**
+- **A shared render budget.** Every mirror render is a whole extra scene render. Mirrors took turns one per frame at 30
+  updates a second each, so with three mirrors one was rendering on every frame. Now the mirrors share a total (Quality >
+  "Mirror renders per second (all mirrors)", 40 by default) and each updates 20 times a second by default.
+- **Only mirrors you can see render.** A mirror counted as visible whenever any camera or shadow pass saw it, so mirrors
+  behind your head kept rendering; now it must be in your view.
+- **Coarser models in the mirror picture** (Quality > "Mirror detail", 0.5 by default) and no HDR / MSAA buffers for it.
+- **No more hitch every 2 seconds** with many aircraft around: the canopy-glass search ran over every aircraft part in the scene;
+  it now runs when you change aircraft and every 10 s.
 - **Less lag**: mirror cameras no longer re-draw the sun's shadow cascades. With shadows on, each mirror render redrew the
   whole scene's shadow maps on top of the main view's, most of a mirror's cost; the small mirror picture barely shows them.
 

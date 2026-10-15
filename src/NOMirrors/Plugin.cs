@@ -10,7 +10,7 @@ namespace NOMirrors
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "iornman.nomirrors";
-        public const string Version = "0.0.3";
+        public const string Version = "0.0.4";
 
         internal static ManualLogSource Log;
         internal static ConfigEntry<bool> Enabled;
@@ -19,6 +19,7 @@ namespace NOMirrors
         internal static ConfigEntry<int> ProbeResolution;
         internal static ConfigEntry<float> ProbeRate;
         internal static ConfigEntry<float> FieldOfView;
+        internal static ConfigEntry<float> MaxRendersPerSecond, DetailScale;
         internal static ConfigEntry<bool> ShowCockpit;
         internal static MirrorSettings Defaults = new MirrorSettings();
         internal static int ExcludedLayers = 1 << 5;   // UI
@@ -49,8 +50,16 @@ namespace NOMirrors
                 "Camera mode: mirrors also show the cockpit interior (seat, canopy frame), which the game draws with its own camera");
             var res = Config.Bind("Quality", "Resolution", 256, new ConfigDescription("Camera mode: reflection texture height in pixels",
                 new AcceptableValueRange<int>(32, 2048)));
-            var fps = Config.Bind("Quality", "Updates per second", 30f, new ConfigDescription("How often each mirror re-renders (0 = every frame)",
+            var fps = Config.Bind("Quality", "Updates per second", 20f, new ConfigDescription("How often each mirror re-renders (0 = every frame)",
                 new AcceptableValueRange<float>(0f, 144f)));
+            // Each mirror render is a whole extra scene render. Mirrors take turns, one per frame; at 30 updates a second each, three
+            // mirrors kept a mirror rendering on every frame, doubling the scene cost (performance report, 0.0.3). This caps the total.
+            MaxRendersPerSecond = Config.Bind("Quality", "Mirror renders per second (all mirrors)", 40f, new ConfigDescription(
+                "Camera mode: total mirror renders per second, shared by all mirrors (each is a scene render; 0 = no limit)",
+                new AcceptableValueRange<float>(0f, 240f)));
+            DetailScale = Config.Bind("Quality", "Mirror detail", 0.5f, new ConfigDescription(
+                "Camera mode: level of detail in the mirrors relative to the main view (lower = coarser models in the small mirror picture, faster)",
+                new AcceptableValueRange<float>(0.1f, 1f)));
             var far = Config.Bind("Quality", "View distance", 3000f, "How far the mirrors see, metres");
             void Apply() { Defaults.Resolution = res.Value; Defaults.UpdateRate = fps.Value; Defaults.Far = far.Value; }
             Apply();
