@@ -2,6 +2,9 @@
 
 ## 0.0.4 (not released yet)
 **Much less lag.**
+- **One shared render for all mirrors** (Quality > "Shared rear view", on by default). Each mirror render is a whole extra scene
+  render, about 6 ms each whatever its size or view distance; now one render of the view behind, from the mirrors' combined
+  viewpoint, serves every mirror, and each glass shows its own part of it. With three mirrors that is about a third of the cost.
 - **A shared render budget.** Every mirror render is a whole extra scene render. Mirrors took turns one per frame at 30
   updates a second each, so with three mirrors one was rendering on every frame. Now the mirrors share a total (Quality >
   "Mirror renders per second (all mirrors)", 40 by default) and each updates 20 times a second by default.

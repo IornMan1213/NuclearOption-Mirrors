@@ -20,6 +20,7 @@ namespace NOMirrors
         internal static ConfigEntry<float> ProbeRate;
         internal static ConfigEntry<float> FieldOfView;
         internal static ConfigEntry<float> MaxRendersPerSecond, DetailScale;
+        internal static ConfigEntry<bool> SharedView;
         internal static ConfigEntry<bool> ShowCockpit;
         internal static MirrorSettings Defaults = new MirrorSettings();
         internal static int ExcludedLayers = 1 << 5;   // UI
@@ -57,6 +58,9 @@ namespace NOMirrors
             MaxRendersPerSecond = Config.Bind("Quality", "Mirror renders per second (all mirrors)", 40f, new ConfigDescription(
                 "Camera mode: total mirror renders per second, shared by all mirrors (each is a scene render; 0 = no limit)",
                 new AcceptableValueRange<float>(0f, 240f)));
+            SharedView = Config.Bind("Quality", "Shared rear view", true,
+                "Camera mode: one render of the view behind serves all mirrors (about a third of the cost with three mirrors). Off: a " +
+                "separate render per mirror, exact for things very close behind");
             DetailScale = Config.Bind("Quality", "Mirror detail", 0.5f, new ConfigDescription(
                 "Camera mode: level of detail in the mirrors relative to the main view (lower = coarser models in the small mirror picture, faster)",
                 new AcceptableValueRange<float>(0.1f, 1f)));

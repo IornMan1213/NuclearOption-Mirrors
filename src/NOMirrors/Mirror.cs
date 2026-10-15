@@ -100,6 +100,24 @@ namespace NOMirrors
                 ActiveProbeMirrors++; counted = true;
                 Bend();
             }
+            else if (Plugin.SharedView.Value)
+            {
+                // one shared render of the view behind serves every mirror (SharedView); this glass shows its part of it
+                shared = true;
+                Vector3 c = local.center, e = local.extents;
+                quad = new Vector3[] { c + new Vector3(-e.x, -e.y, 0f), c + new Vector3(-e.x, e.y, 0f), c + new Vector3(e.x, e.y, 0f), c + new Vector3(e.x, -e.y, 0f) };
+                sharedMesh = new Mesh
+                {
+                    name = (originalMesh != null ? originalMesh.name : name) + "_shared",
+                    vertices = quad,
+                    uv = new[] { new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1), new Vector2(1, 0) },
+                    triangles = new[] { 0, 1, 2, 0, 2, 3, 0, 2, 1, 0, 3, 2 },   // both faces
+                };
+                sharedMesh.RecalculateNormals(); sharedMesh.RecalculateBounds();
+                if (filter != null) filter.sharedMesh = sharedMesh;
+                mat = MirrorSystem.MakeMaterial(SharedView.Texture, Settings);
+                SharedView.Register(this);
+            }
             else
             {
                 int h = Settings.Resolution, w = Mathf.Clamp(Mathf.RoundToInt(h * size.x / size.y), 16, 4096);
@@ -136,6 +154,8 @@ namespace NOMirrors
         {
             if (glass == null) return;
             if (mode != Plugin.Mode.Value && !(Plugin.Mode.Value == MirrorMode.Probe && ProbeReflections.Lit == null)) Apply();
+            if (mode == MirrorMode.Cameras && shared != Plugin.SharedView.Value) Apply();
+            if (shared) { SharedView.Tick(Plugin.ViewCamera()); return; }
             if (cam == null)           // probe mode: only re-bend the glass if the field of view changed
             {
                 if (counted && !Mathf.Approximately(bentFor, Settings.FovScale * Plugin.FieldOfView.Value)) Bend();
@@ -323,8 +343,75 @@ namespace NOMirrors
             filter.sharedMesh = bent;
         }
 
+        // ---- shared view (SharedView) ----
+        bool shared;
+        Vector3[] quad;
+        Mesh sharedMesh;
+
+        Vector3 FacingNormal(Vector3 eye, out Vector3 centre)
+        {
+            centre = transform.TransformPoint(local.center);
+            Vector3 n = Vector3.Cross(transform.TransformVector(Vector3.right), transform.TransformVector(Vector3.up)).normalized;
+            return Vector3.Dot(eye - centre, n) < 0f ? -n : n;
+        }
+
+        /// <summary>The eye mirrored in the glass's plane.</summary>
+        internal Vector3 VirtualEye(Vector3 eye)
+        {
+            var n = FacingNormal(eye, out var c);
+            return eye - 2f * Vector3.Dot(eye - c, n) * n;
+        }
+
+        /// <summary>The direction the glass's centre reflects, seen from the eye.</summary>
+        internal Vector3 CentreReflection(Vector3 eye)
+        {
+            var n = FacingNormal(eye, out var c);
+            return Vector3.Reflect((c - eye).normalized, n);
+        }
+
+        /// <summary>The directions the glass's corners reflect, widened about the centre by the mirror's field of view.</summary>
+        internal Vector3[] CornerReflections(Vector3 eye)
+        {
+            var n = FacingNormal(eye, out var c);
+            var r0 = Vector3.Reflect((c - eye).normalized, n);
+            float k = Mathf.Max(Settings.FovScale * Plugin.FieldOfView.Value, 0.1f);
+            var outDirs = new Vector3[quad.Length];
+            for (int i = 0; i < quad.Length; i++)
+            {
+                var r = Vector3.Reflect((transform.TransformPoint(quad[i]) - eye).normalized, n);
+                outDirs[i] = (r0 + (r - r0) * k).normalized;
+            }
+            return outDirs;
+        }
+
+        /// <summary>Points the glass's corners at their directions in the shared picture (its window x0..x1, y0..y1 in tangent space).</summary>
+        internal void MapShared(Vector3 eye, Vector3 fwd, Vector3 right, Vector3 up, float x0, float x1, float y0, float y1)
+        {
+            if (sharedMesh == null) return;
+            var dirs = CornerReflections(eye);
+            var uv = new Vector2[dirs.Length];
+            for (int i = 0; i < dirs.Length; i++)
+            {
+                float z = Mathf.Max(Vector3.Dot(dirs[i], fwd), 0.15f);
+                uv[i] = new Vector2((Vector3.Dot(dirs[i], right) / z - x0) / (x1 - x0), (Vector3.Dot(dirs[i], up) / z - y0) / (y1 - y0));
+            }
+            sharedMesh.uv = uv;
+            LastRenderTime = Time.unscaledTime;
+        }
+
+        internal void SetSharedTexture(RenderTexture tex)
+        {
+            if (mat == null) return;
+            foreach (var prop in new[] { "_BaseMap", "_MainTex" }) if (mat.HasProperty(prop)) mat.SetTexture(prop, tex);
+        }
+
+        internal static void RememberCamera(Camera c) => mirrorCameras.Add(c);
+        internal static void ForgetCamera(Camera c) => mirrorCameras.Remove(c);
+
         void Teardown()
         {
+            if (shared) { shared = false; SharedView.Unregister(this); }
+            if (sharedMesh != null) { Destroy(sharedMesh); sharedMesh = null; }
             if (filter != null && originalMesh != null) filter.sharedMesh = originalMesh;
             bentFor = -1f;
             if (cam != null) { mirrorCameras.Remove(cam); Destroy(cam.gameObject); cam = null; }
