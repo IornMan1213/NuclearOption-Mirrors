@@ -151,7 +151,14 @@ namespace NOMirrors
             if (!render || lastRenderFrame == Time.frameCount) return;
             // only while the glass is in the player's view: Renderer.isVisible also counts shadow passes and other cameras, so mirrors
             // behind the pilot's head kept rendering
-            if (planesFrame != Time.frameCount) { GeometryUtility.CalculateFrustumPlanes(main, planes); planesFrame = Time.frameCount; }
+            if (planesFrame != Time.frameCount)
+            {
+                GeometryUtility.CalculateFrustumPlanes(main, planes);
+                // the near plane at the eye: the game's main camera starts 1 m out (the cockpit has its own camera), and the mirrors,
+                // ~0.6 m from the eye, all failed the test and went black
+                planes[4] = new Plane(main.transform.forward, main.transform.position);
+                planesFrame = Time.frameCount;
+            }
             if (!GeometryUtility.TestPlanesAABB(planes, glass.bounds)) return;
             if (!Place(main.transform.position)) return;
             lastRenderFrame = Time.frameCount;
