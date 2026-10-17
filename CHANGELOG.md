@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.0.4 (not released yet)
+## 0.0.4
 **Much less lag.**
 - **One shared render for all mirrors** (Quality > "Shared rear view", on by default). Each mirror render is a whole extra scene
   render, about 6 ms each whatever its size or view distance; now one render of the view behind, from the mirrors' combined
